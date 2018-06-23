@@ -1,10 +1,9 @@
 const vscode = require("vscode");
 const path = require("path");
 const fs = require("fs");
-const child_process = require("child_process");
 const codemirror = require("codemirror/addon/runmode/runmode.node.js");
 const server = require("./server");
-
+const browser = require("./browser");
 require("codemirror/mode/meta.js");
 
 
@@ -18,7 +17,7 @@ exports.extension_print = function () {
     let language = editor.document.languageId;
     var mode = resolveAliases(language);
     let url = "http://localhost:" + port + "/?mode=" + mode;
-    openBrowser(url);
+    browser.open(url);
   });
 };
 
@@ -47,29 +46,6 @@ const requestHandler = (request, response) => {
     }
   };
   
-function openBrowser(url) {
-  let browserPath = vscode.workspace
-    .getConfiguration("printcode")
-    .get("browserPath");
-  if (browserPath != "") {
-    child_process.exec('"' + browserPath + '" ' + url);
-  }
-  else {
-    let platform = process.platform;
-    switch (platform) {
-      case "darwin":
-        child_process.exec("open " + url);
-        break;
-      case "linux":
-        child_process.exec("xdg-open " + url);
-        break;
-      case "win32":
-        child_process.exec("start " + url);
-        break;
-    }
-  }
-}
-
   function getHtml(editor) {
     let language = editor.document.languageId;
     let text = editor.document.getText();

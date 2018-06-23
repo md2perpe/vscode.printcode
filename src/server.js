@@ -1,11 +1,11 @@
 const vscode = require("vscode");
 const http = require("http");
 
+let server = null;
+let portNumberInUse = null;
+
 exports.start = function (port, handler) {
     return new Promise((resolve, reject ) => {
-        let server = null;
-        let portNumberInUse = null;
-        
         if (server !== null && port !== portNumberInUse) {
           server.close(function () { });
           server = null;
