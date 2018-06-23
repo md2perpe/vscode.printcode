@@ -14,13 +14,17 @@ exports.extension_print = function () {
     .get("webServerPort");
 
   server.start(port, requestHandler).then(function () {
-    let editor = vscode.window.activeTextEditor;
-    let language = editor.document.languageId;
-    var mode = util.resolveAliases(language);
-    let url = "http://localhost:" + port + "/?mode=" + mode;
-    browser.open(url);
+    browser.open(getURL(port));
   });
 };
+
+
+function getURL(port) {
+  let editor = vscode.window.activeTextEditor;
+  let language = editor.document.languageId;
+  var mode = util.resolveAliases(language);
+  return "http://localhost:" + port + "/?mode=" + mode;
+}
 
 
 function requestHandler (request, response) {
@@ -37,14 +41,19 @@ function requestHandler (request, response) {
       let file = path.join(__dirname,  "..", request.url);
       fs.readFile(file, "utf8", (err, text) => {
         if (err) {
-          response.end(err.code + ": " + err.message);
+            console.error(err.message);
+            response.writeHead(404, err.message);
+            response.end();
+            return;
         }
         response.end(text);
       });
     }
     
     else {
-      response.end("");
+      console.error("URL path not found: " + request.url);
+      response.writeHead(404, "URL path not found");
+      response.end();
     }
 
   };
