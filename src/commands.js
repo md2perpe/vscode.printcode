@@ -2,44 +2,24 @@ const vscode = require("vscode");
 const path = require("path");
 const fs = require("fs");
 const child_process = require("child_process");
-const http = require("http");
 const codemirror = require("codemirror/addon/runmode/runmode.node.js");
+const server = require("./server");
+
 require("codemirror/mode/meta.js");
 
-let server = null;
-let portNumberInUse = null;
 
 exports.extension_print = function () {
   let port = vscode.workspace
     .getConfiguration("printcode")
     .get("webServerPort");
 
-  if (server !== null && port !== portNumberInUse) {
-    server.close(function () { });
-    server = null;
-  }
-
-  if (server !== null) {
-    printIt();
-    return;
-  }
-  
-  startServer(port).then(function () {
-    printIt();
-  });
-
-  function printIt() {
-    if (!server) {
-      return;
-    }
-
+  server.start(port, requestHandler).then(function () {
     let editor = vscode.window.activeTextEditor;
     let language = editor.document.languageId;
     var mode = resolveAliases(language);
     let url = "http://localhost:" + port + "/?mode=" + mode;
-
     openBrowser(url);
-  }
+  });
 };
 
 const requestHandler = (request, response) => {
@@ -67,38 +47,6 @@ const requestHandler = (request, response) => {
     }
   };
   
-function startServer(port) {
-  return new Promise((resolve, reject ) => {
-    server = http.createServer(requestHandler);
-    server.on('error', function (err) {
-      if (err.code === 'EADDRINUSE') {
-        vscode.window.showInformationMessage(`Unable to print: Port ${port} is in use. \
-  Please set different port number in User Settings: printcode.webServerPort \
-  and Reload Window, or end the process reserving the port.`);
-      }
-      else if (err.code === 'EACCES') {
-        vscode.window.showInformationMessage(`Unable to print: No permission to use port ${port}. \
-  Please set different port number in User Settings: printcode.webServerPort \
-  and Reload Window.`);
-      }
-      server.close();
-      server = null;
-      portNumberInUse = null;
-      console.log(err);
-      reject();
-    });
-    server.on('request', (request, response) => {
-      response.on('finish', () => {
-        request.socket.destroy();
-      });
-    });
-    server.listen(port, function() {
-      portNumberInUse = port;
-      resolve();
-    });
-  });
-}
-
 function openBrowser(url) {
   let browserPath = vscode.workspace
     .getConfiguration("printcode")
