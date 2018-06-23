@@ -10,84 +10,65 @@ let server = null;
 let portNumberInUse = null;
 
 exports.extension_print = function () {
-    let port = vscode.workspace
-      .getConfiguration("printcode")
-      .get("webServerPort");
+  let port = vscode.workspace
+    .getConfiguration("printcode")
+    .get("webServerPort");
 
-    if (server !== null && port !== portNumberInUse) {
-      server.close(function () { });
-      server = null;
-    }
+  if (server !== null && port !== portNumberInUse) {
+    server.close(function () { });
+    server = null;
+  }
 
-    if (server == null) {
-      server = http.createServer(requestHandler);
-      server.on('error', function (err) {
-        if (err.code === 'EADDRINUSE') {
-          vscode.window.showInformationMessage(
-            `Unable to print: Port ${port} is in use. \
+  if (server == null) {
+    server = http.createServer(requestHandler);
+    server.on('error', function (err) {
+      if (err.code === 'EADDRINUSE') {
+        vscode.window.showInformationMessage(
+          `Unable to print: Port ${port} is in use. \
 Please set different port number in User Settings: printcode.webServerPort \
 and Reload Window, or end the process reserving the port.`
-          );
-        } else if (err.code === 'EACCES') {
-          vscode.window.showInformationMessage(
-            `Unable to print: No permission to use port ${port}. \
+        );
+      } else if (err.code === 'EACCES') {
+        vscode.window.showInformationMessage(
+          `Unable to print: No permission to use port ${port}. \
 Please set different port number in User Settings: printcode.webServerPort \
 and Reload Window.`
-          );
-        }
-        server.close();
-        server = null;
-        portNumberInUse = null;
-        return console.log(err);
+        );
+      }
+      server.close();
+      server = null;
+      portNumberInUse = null;
+      return console.log(err);
+    });
+    server.on('request', (request, response) => {
+      response.on('finish', () => {
+        request.socket.destroy();
       });
-      server.on('request', (request, response) => {
-        response.on('finish', () => {
-          request.socket.destroy();
-        });
-      });
+    });
 
-      server.listen(port, () => {});
-      portNumberInUse = port;
-      setTimeout(function() {
-        printIt();
-      }, 100);
-    } else {
+    server.listen(port, () => {});
+    portNumberInUse = port;
+    setTimeout(function() {
       printIt();
+    }, 100);
+  } else {
+    printIt();
+  }
+
+  function printIt() {
+    if (!server) {
+      return;
     }
 
-    function printIt() {
-      if (!server) {
-        return;
-      }
+    let editor = vscode.window.activeTextEditor;
+    let language = editor.document.languageId;
+    var mode = resolveAliases(language);
+    let url = "http://localhost:" + port + "/?mode=" + mode;
 
-      let editor = vscode.window.activeTextEditor;
-      let language = editor.document.languageId;
-      var mode = resolveAliases(language);
-      let url = "http://localhost:" + port + "/?mode=" + mode;
+    openBrowser(url);
+  }
+};
 
-      let browserPath = vscode.workspace
-        .getConfiguration("printcode")
-        .get("browserPath");
-      if (browserPath != "") {
-        child_process.exec('"' + browserPath + '" ' + url);
-      } else {
-        let platform = process.platform;
-        switch (platform) {
-          case "darwin":
-            child_process.exec("open " + url);
-            break;
-          case "linux":
-            child_process.exec("xdg-open " + url);
-            break;
-          case "win32":
-            child_process.exec("start " + url);
-            break;
-        }
-      }
-    }
-  };
-
-  
 const requestHandler = (request, response) => {
     if (request.url.replace(/\?mode\=.*$/, "") == "/") {
       let editor = vscode.window.activeTextEditor;
@@ -113,6 +94,29 @@ const requestHandler = (request, response) => {
     }
   };
   
+function openBrowser(url) {
+  let browserPath = vscode.workspace
+    .getConfiguration("printcode")
+    .get("browserPath");
+  if (browserPath != "") {
+    child_process.exec('"' + browserPath + '" ' + url);
+  }
+  else {
+    let platform = process.platform;
+    switch (platform) {
+      case "darwin":
+        child_process.exec("open " + url);
+        break;
+      case "linux":
+        child_process.exec("xdg-open " + url);
+        break;
+      case "win32":
+        child_process.exec("start " + url);
+        break;
+    }
+  }
+}
+
   function getHtml(editor) {
     let language = editor.document.languageId;
     let text = editor.document.getText();
