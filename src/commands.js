@@ -24,7 +24,7 @@ exports.extension_print = function () {
     return;
   }
   
-  startServer(port, function () {
+  startServer(port).then(function () {
     printIt();
   });
 
@@ -67,31 +67,36 @@ const requestHandler = (request, response) => {
     }
   };
   
-function startServer(port, onListening) {
-  server = http.createServer(requestHandler);
-  server.on('error', function (err) {
-    if (err.code === 'EADDRINUSE') {
-      vscode.window.showInformationMessage(`Unable to print: Port ${port} is in use. \
-Please set different port number in User Settings: printcode.webServerPort \
-and Reload Window, or end the process reserving the port.`);
-    }
-    else if (err.code === 'EACCES') {
-      vscode.window.showInformationMessage(`Unable to print: No permission to use port ${port}. \
-Please set different port number in User Settings: printcode.webServerPort \
-and Reload Window.`);
-    }
-    server.close();
-    server = null;
-    portNumberInUse = null;
-    return console.log(err);
-  });
-  server.on('request', (request, response) => {
-    response.on('finish', () => {
-      request.socket.destroy();
+function startServer(port) {
+  return new Promise((resolve, reject ) => {
+    server = http.createServer(requestHandler);
+    server.on('error', function (err) {
+      if (err.code === 'EADDRINUSE') {
+        vscode.window.showInformationMessage(`Unable to print: Port ${port} is in use. \
+  Please set different port number in User Settings: printcode.webServerPort \
+  and Reload Window, or end the process reserving the port.`);
+      }
+      else if (err.code === 'EACCES') {
+        vscode.window.showInformationMessage(`Unable to print: No permission to use port ${port}. \
+  Please set different port number in User Settings: printcode.webServerPort \
+  and Reload Window.`);
+      }
+      server.close();
+      server = null;
+      portNumberInUse = null;
+      console.log(err);
+      reject();
+    });
+    server.on('request', (request, response) => {
+      response.on('finish', () => {
+        request.socket.destroy();
+      });
+    });
+    server.listen(port, function() {
+      portNumberInUse = port;
+      resolve();
     });
   });
-  server.listen(port, onListening || function () {});
-  portNumberInUse = port;
 }
 
 function openBrowser(url) {
