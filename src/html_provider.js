@@ -4,17 +4,16 @@ const { paperSpecs } = require("./paperSpecs");
 const util = require("./util");
 
 exports.getHtml = function (editor) {
-    let language = editor.document.languageId;
-    let text = editor.document.getText();
-    let html = buildHtml(text, language);
-    return html;
 }
   
 let printcodeConfig = vscode.workspace.getConfiguration("printcode", null);
 let editorConfig    = vscode.workspace.getConfiguration("editor", null);
 
 function buildHtml(text, language) {
-    var mode = util.resolveAliases(language);
+    let language = editor.document.languageId;
+    let mode = util.resolveAliases(language);
+
+    let text = editor.document.getText();
   
     let paperSize = printcodeConfig.get("paperSize", "a4");
 
@@ -115,21 +114,16 @@ function title() {
       return filePath;
     
     case "relative", "pretty":
-      // partial path relative to workspace root
-      // better? https://github.com/cg-cnu/vscode-path-tools/blob/master/src/pathTools.ts
       let folder = null;
-      if (resource.scheme === "file") {
-        // file is an actual file on disk
+      if (resource.scheme === "file") {                                   // if file is an actual file on disk
         folder = vscode.workspace.getWorkspaceFolder(resource);
-        if (folder) {
-          // ...and is located inside workspace folder
-          return filePath.replace(folder.uri.fsPath, "").substr(1);
+        if (folder) {                                                     // and is located inside workspace folder
+          return filePath.replace(folder.uri.fsPath, "").substr(1);       // then use partial path relative to workspace root
         }
       }
       return path.basename(filePath);
 
-    default:
-      // default matches config default value "filename" and anything else
+    default:                                                              // matches config default value "filename" and anything else
       return path.basename(filePath);
   }
 }
