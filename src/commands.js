@@ -19,41 +19,42 @@ exports.extension_print = function () {
     server = null;
   }
 
-  if (server == null) {
-    server = http.createServer(requestHandler);
-    server.on('error', function (err) {
-      if (err.code === 'EADDRINUSE') {
-        vscode.window.showInformationMessage(
-          `Unable to print: Port ${port} is in use. \
+  if (server !== null) {
+    printIt();
+    return;
+  }
+  
+  server = http.createServer(requestHandler);
+  server.on('error', function (err) {
+    if (err.code === 'EADDRINUSE') {
+      vscode.window.showInformationMessage(
+        `Unable to print: Port ${port} is in use. \
 Please set different port number in User Settings: printcode.webServerPort \
 and Reload Window, or end the process reserving the port.`
-        );
-      } else if (err.code === 'EACCES') {
-        vscode.window.showInformationMessage(
-          `Unable to print: No permission to use port ${port}. \
+      );
+    } else if (err.code === 'EACCES') {
+      vscode.window.showInformationMessage(
+        `Unable to print: No permission to use port ${port}. \
 Please set different port number in User Settings: printcode.webServerPort \
 and Reload Window.`
-        );
-      }
-      server.close();
-      server = null;
-      portNumberInUse = null;
-      return console.log(err);
+      );
+    }
+    server.close();
+    server = null;
+    portNumberInUse = null;
+    return console.log(err);
+  });
+  server.on('request', (request, response) => {
+    response.on('finish', () => {
+      request.socket.destroy();
     });
-    server.on('request', (request, response) => {
-      response.on('finish', () => {
-        request.socket.destroy();
-      });
-    });
+  });
 
-    server.listen(port, () => {});
-    portNumberInUse = port;
-    setTimeout(function() {
-      printIt();
-    }, 100);
-  } else {
+  server.listen(port, () => {});
+  portNumberInUse = port;
+  setTimeout(function() {
     printIt();
-  }
+  }, 100);
 
   function printIt() {
     if (!server) {
