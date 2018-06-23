@@ -24,10 +24,9 @@ exports.extension_print = function () {
     return;
   }
   
-  startServer(port);
-  setTimeout(function() {
+  startServer(port, function () {
     printIt();
-  }, 100);
+  });
 
   function printIt() {
     if (!server) {
@@ -68,7 +67,7 @@ const requestHandler = (request, response) => {
     }
   };
   
-function startServer(port) {
+function startServer(port, onListening) {
   server = http.createServer(requestHandler);
   server.on('error', function (err) {
     if (err.code === 'EADDRINUSE') {
@@ -91,7 +90,7 @@ and Reload Window.`);
       request.socket.destroy();
     });
   });
-  server.listen(port, () => { });
+  server.listen(port, onListening || function () {});
   portNumberInUse = port;
 }
 
