@@ -24,34 +24,7 @@ exports.extension_print = function () {
     return;
   }
   
-  server = http.createServer(requestHandler);
-  server.on('error', function (err) {
-    if (err.code === 'EADDRINUSE') {
-      vscode.window.showInformationMessage(
-        `Unable to print: Port ${port} is in use. \
-Please set different port number in User Settings: printcode.webServerPort \
-and Reload Window, or end the process reserving the port.`
-      );
-    } else if (err.code === 'EACCES') {
-      vscode.window.showInformationMessage(
-        `Unable to print: No permission to use port ${port}. \
-Please set different port number in User Settings: printcode.webServerPort \
-and Reload Window.`
-      );
-    }
-    server.close();
-    server = null;
-    portNumberInUse = null;
-    return console.log(err);
-  });
-  server.on('request', (request, response) => {
-    response.on('finish', () => {
-      request.socket.destroy();
-    });
-  });
-
-  server.listen(port, () => {});
-  portNumberInUse = port;
+  startServer(port);
   setTimeout(function() {
     printIt();
   }, 100);
@@ -95,6 +68,33 @@ const requestHandler = (request, response) => {
     }
   };
   
+function startServer(port) {
+  server = http.createServer(requestHandler);
+  server.on('error', function (err) {
+    if (err.code === 'EADDRINUSE') {
+      vscode.window.showInformationMessage(`Unable to print: Port ${port} is in use. \
+Please set different port number in User Settings: printcode.webServerPort \
+and Reload Window, or end the process reserving the port.`);
+    }
+    else if (err.code === 'EACCES') {
+      vscode.window.showInformationMessage(`Unable to print: No permission to use port ${port}. \
+Please set different port number in User Settings: printcode.webServerPort \
+and Reload Window.`);
+    }
+    server.close();
+    server = null;
+    portNumberInUse = null;
+    return console.log(err);
+  });
+  server.on('request', (request, response) => {
+    response.on('finish', () => {
+      request.socket.destroy();
+    });
+  });
+  server.listen(port, () => { });
+  portNumberInUse = port;
+}
+
 function openBrowser(url) {
   let browserPath = vscode.workspace
     .getConfiguration("printcode")
